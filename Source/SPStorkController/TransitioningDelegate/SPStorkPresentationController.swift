@@ -21,7 +21,7 @@
 
 import UIKit
 
-class SPStorkPresentationController: UIPresentationController, UIGestureRecognizerDelegate {
+public class SPStorkPresentationController: UIPresentationController, UIGestureRecognizerDelegate {
     
     var swipeToDismissEnabled: Bool = true
     var tapAroundToDismissEnabled: Bool = true
@@ -70,7 +70,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
     
     private var feedbackGenerator: UIImpactFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
     
-    override var presentedView: UIView? {
+    public override var presentedView: UIView? {
         let view = self.presentedViewController.view
         if view?.frame.origin == CGPoint.zero {
             view?.frame = self.frameOfPresentedViewInContainerView
@@ -78,7 +78,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
         return view
     }
     
-    override var frameOfPresentedViewInContainerView: CGRect {
+    public override var frameOfPresentedViewInContainerView: CGRect {
         guard let containerView = containerView else { return .zero }
         let baseY: CGFloat = self.topSpace + 13
         let maxHeight: CGFloat = containerView.bounds.height - baseY
@@ -94,7 +94,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
         return CGRect(x: 0, y: containerView.bounds.height - height, width: containerView.bounds.width, height: height)
     }
     
-    override func presentationTransitionWillBegin() {
+    public override func presentationTransitionWillBegin() {
         super.presentationTransitionWillBegin()
         
         if !self.hapticMoments.isEmpty {
@@ -191,7 +191,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
         }
     }
     
-    override func presentationTransitionDidEnd(_ completed: Bool) {
+    public override func presentationTransitionDidEnd(_ completed: Bool) {
         super.presentationTransitionDidEnd(completed)
         guard let containerView = containerView else { return }
         self.updateSnapshot()
@@ -224,7 +224,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
         })
     }
     
-    override func dismissalTransitionWillBegin() {
+    public override func dismissalTransitionWillBegin() {
         super.dismissalTransitionWillBegin()
         guard let containerView = containerView else { return }
         self.startDismissing = true
@@ -289,7 +289,7 @@ class SPStorkPresentationController: UIPresentationController, UIGestureRecogniz
         })
     }
     
-    override func dismissalTransitionDidEnd(_ completed: Bool) {
+    public override func dismissalTransitionDidEnd(_ completed: Bool) {
         super.dismissalTransitionDidEnd(completed)
         guard let containerView = containerView else { return }
         
@@ -352,7 +352,7 @@ extension SPStorkPresentationController {
         }
     }
     
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if let gester = gestureRecognizer as? UIPanGestureRecognizer {
             let velocity = gester.velocity(in: self.presentedViewController.view)
             return abs(velocity.y) > abs(velocity.x)
@@ -432,7 +432,7 @@ extension SPStorkPresentationController {
 
 extension SPStorkPresentationController {
     
-    override func containerViewWillLayoutSubviews() {
+    public override func containerViewWillLayoutSubviews() {
         super.containerViewWillLayoutSubviews()
         guard let containerView = containerView else { return }
         self.updateSnapshotAspectRatio()
@@ -441,7 +441,7 @@ extension SPStorkPresentationController {
         }
     }
     
-    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+    public override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         coordinator.animate(alongsideTransition: { contex in
             self.updateLayoutIndicator()
