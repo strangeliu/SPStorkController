@@ -29,7 +29,7 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
     var showIndicator: Bool = true
     var indicatorColor: UIColor = UIColor.init(red: 202/255, green: 201/255, blue: 207/255, alpha: 1)
     var hideIndicatorWhenScroll: Bool = false
-    var customHeight: CGFloat? = nil
+    public var customHeight: CGFloat? = nil
     var translateForDismiss: CGFloat = 200
     var hapticMoments: [SPStorkHapticMoments] = [.willDismissIfRelease]
     
