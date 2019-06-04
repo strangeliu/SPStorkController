@@ -315,8 +315,8 @@ extension SPStorkPresentationController {
             self.workGester = true
             self.indicatorView.style = .line
             self.presentingViewController.view.layer.removeAllAnimations()
-            self.presentingViewController.view.endEditing(true)
-            self.presentedViewController.view.endEditing(true)
+//            self.presentingViewController.view.endEditing(true)
+//            self.presentedViewController.view.endEditing(true)
             gestureRecognizer.setTranslation(CGPoint(x: 0, y: 0), in: containerView)
         case .changed:
             self.workGester = true
