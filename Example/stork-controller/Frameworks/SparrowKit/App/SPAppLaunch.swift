@@ -23,7 +23,7 @@ import UIKit
 
 extension SPApp {
     
-    struct Launch {
+    enum Launch {
         
         static func run() {
             self.count += 1
@@ -44,7 +44,5 @@ extension SPApp {
         static var dateFirstLaunch: Date {
             return ((UserDefaults.standard.object(forKey: "SPDateFirstLaunch") as? Date) ?? Date())
         }
-        
-        private init() {}
     }
 }

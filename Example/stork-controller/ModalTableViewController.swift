@@ -4,7 +4,10 @@ class ModalTableViewController: UIViewController {
     
     let navBar = SPFakeBarView(style: .stork)
     let tableView = UITableView()
-    override var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
+    var lightStatusBar: Bool = false
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return self.lightStatusBar ? .lightContent : .default
+    }
     
     private var data = ["Assembly", "C", "C++", "Java", "JavaScript", "Php", "Python", "Swift", "Kotlin", "Assembly", "C", "C++", "Java", "JavaScript", "Php", "Python", "Objective-C", "Swift", "Kotlin", "Assembly", "C", "C++", "Java", "JavaScript", "Php", "Python", "Objective-C"]
     
@@ -28,6 +31,14 @@ class ModalTableViewController: UIViewController {
         self.updateLayout(with: self.view.frame.size)
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.lightStatusBar = true
+        UIView.animate(withDuration: 0.3) { () -> Void in
+            self.setNeedsStatusBarAppearanceUpdate()
+        }
+    }
+    
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         self.updateLayout(with: self.view.frame.size)
@@ -38,7 +49,7 @@ class ModalTableViewController: UIViewController {
     }
     
     @objc func dismissAction() {
-        self.dismiss()
+        SPStorkController.dismissWithConfirmation(controller: self, completion: nil)
     }
 }
 
@@ -68,3 +79,20 @@ extension ModalTableViewController: UITableViewDelegate {
     }
 }
 
+extension ModalTableViewController: SPStorkControllerConfirmDelegate {
+    
+    var needConfirm: Bool {
+        return true
+    }
+    
+    func confirm(_ completion: @escaping (Bool) -> ()) {
+        let alertController = UIAlertController(title: "Need dismiss?", message: "It test confirm option for SPStorkController", preferredStyle: .actionSheet)
+        alertController.addDestructiveAction(title: "Confirm", complection: {
+            completion(true)
+        })
+        alertController.addCancelAction(title: "Cancel") {
+            completion(false)
+        }
+        self.present(alertController)
+    }
+}

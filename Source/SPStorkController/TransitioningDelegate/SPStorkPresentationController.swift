@@ -29,12 +29,14 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
     var showIndicator: Bool = true
     var indicatorColor: UIColor = UIColor.init(red: 202/255, green: 201/255, blue: 207/255, alpha: 1)
     var hideIndicatorWhenScroll: Bool = false
+    var indicatorMode: SPStorkArrowMode = .auto
     public var customHeight: CGFloat? = nil
     var translateForDismiss: CGFloat = 200
     var hapticMoments: [SPStorkHapticMoments] = [.willDismissIfRelease]
     
     var transitioningDelegate: SPStorkTransitioningDelegate?
     weak var storkDelegate: SPStorkControllerDelegate?
+    weak var confirmDelegate: SPStorkControllerConfirmDelegate?
     
     var pan: UIPanGestureRecognizer?
     var tap: UITapGestureRecognizer?
@@ -50,6 +52,7 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
     private var snapshotViewWidthConstraint: NSLayoutConstraint?
     private var snapshotViewAspectRatioConstraint: NSLayoutConstraint?
     
+    var workConfirmation: Bool = false
     private var workGester: Bool = false
     private var startDismissing: Bool = false
     private var afterReleaseDismissing: Bool = false
@@ -68,7 +71,7 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
         return factor
     }
     
-    private var feedbackGenerator: UIImpactFeedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+    private var feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
     
     public override var presentedView: UIView? {
         let view = self.presentedViewController.view
@@ -103,19 +106,43 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
         
         guard let containerView = self.containerView, let presentedView = self.presentedView, let window = containerView.window  else { return }
         
+        let closeTitle = NSLocalizedString("Close", comment: "Close")
+        
         if self.showIndicator {
             self.indicatorView.color = self.indicatorColor
-            let tap = UITapGestureRecognizer.init(target: self, action: #selector(self.dismissAction))
+            let tap = UITapGestureRecognizer.init(target: self, action: #selector(self.tapIndicator))
             tap.cancelsTouchesInView = false
             self.indicatorView.addGestureRecognizer(tap)
+            self.indicatorView.accessibilityLabel = closeTitle
             presentedView.addSubview(self.indicatorView)
+            self.indicatorView.translatesAutoresizingMaskIntoConstraints = false
+            self.indicatorView.widthAnchor.constraint(equalToConstant: 36).isActive = true
+            self.indicatorView.heightAnchor.constraint(equalToConstant: 13).isActive = true
+            self.indicatorView.centerXAnchor.constraint(equalTo: presentedView.centerXAnchor).isActive = true
+            self.indicatorView.topAnchor.constraint(equalTo: presentedView.topAnchor, constant: 12).isActive = true
+            self.indicatorView.mode = self.indicatorMode
+
+            if UIAccessibility.isVoiceOverRunning {
+                let accessibleIndicatorOverlayButton = UIButton(type: .custom)
+                accessibleIndicatorOverlayButton.addTarget(self, action: #selector(self.tapIndicator), for: .touchUpInside)
+                accessibleIndicatorOverlayButton.accessibilityLabel = closeTitle
+                presentedView.addSubview(accessibleIndicatorOverlayButton)
+                accessibleIndicatorOverlayButton.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    accessibleIndicatorOverlayButton.leadingAnchor.constraint(equalTo: presentedView.leadingAnchor),
+                    accessibleIndicatorOverlayButton.trailingAnchor.constraint(equalTo: presentedView.trailingAnchor),
+                    accessibleIndicatorOverlayButton.topAnchor.constraint(equalTo: presentedView.topAnchor),
+                    accessibleIndicatorOverlayButton.bottomAnchor.constraint(equalTo: self.indicatorView.bottomAnchor),
+                ])
+            }
         }
         self.updateLayoutIndicator()
         self.indicatorView.style = .arrow
         self.gradeView.alpha = 0
-        
+
+        self.closeButton.accessibilityLabel = closeTitle
         if self.showCloseButton {
-            self.closeButton.addTarget(self, action: #selector(self.dismissAction), for: .touchUpInside)
+            self.closeButton.addTarget(self, action: #selector(self.tapCloseButton), for: .touchUpInside)
             presentedView.addSubview(self.closeButton)
         }
         self.updateLayoutCloseButton()
@@ -202,7 +229,7 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
         self.updateSnapshotAspectRatio()
         
         if self.tapAroundToDismissEnabled {
-            self.tap = UITapGestureRecognizer.init(target: self, action: #selector(self.dismissAction))
+            self.tap = UITapGestureRecognizer.init(target: self, action: #selector(self.tapArround))
             self.tap?.cancelsTouchesInView = false
             self.snapshotViewContainer.addGestureRecognizer(self.tap!)
         }
@@ -216,21 +243,21 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
         }
     }
     
-    @objc func dismissAction() {
-        self.presentingViewController.view.endEditing(true)
-        self.presentedViewController.view.endEditing(true)
-        self.presentedViewController.dismiss(animated: true, completion: {
-            self.storkDelegate?.didDismissStorkByTap?()
-        })
-    }
+//    @objc func dismissAction() {
+//        self.presentingViewController.view.endEditing(true)
+//        self.presentedViewController.view.endEditing(true)
+//        self.presentedViewController.dismiss(animated: true, completion: {
+//            self.storkDelegate?.didDismissStorkByTap?()
+//        })
+//    }
     
-    public override func dismissalTransitionWillBegin() {
+    override public func dismissalTransitionWillBegin() {
         super.dismissalTransitionWillBegin()
         guard let containerView = containerView else { return }
         self.startDismissing = true
         
         let initialFrame: CGRect = presentingViewController.isPresentedAsStork ? presentingViewController.view.frame : containerView.bounds
-
+        
         let initialTransform = CGAffineTransform.identity
             .translatedBy(x: 0, y: -initialFrame.origin.y)
             .translatedBy(x: 0, y: self.topSpace)
@@ -307,6 +334,56 @@ public class SPStorkPresentationController: UIPresentationController, UIGestureR
 
 extension SPStorkPresentationController {
     
+    @objc func tapIndicator() {
+        self.dismissWithConfirmation(prepare: nil, completion: {
+            self.storkDelegate?.didDismissStorkByTap?()
+        })
+    }
+    
+    @objc func tapArround() {
+        self.dismissWithConfirmation(prepare: nil, completion: {
+            self.storkDelegate?.didDismissStorkByTap?()
+        })
+    }
+    
+    @objc func tapCloseButton() {
+        self.dismissWithConfirmation(prepare: nil, completion: {
+            self.storkDelegate?.didDismissStorkByTap?()
+        })
+    }
+    
+    public func dismissWithConfirmation(prepare: (()->())?, completion: (()->())?) {
+        
+        let dismiss = {
+            self.presentingViewController.view.endEditing(true)
+            self.presentedViewController.view.endEditing(true)
+            self.presentedViewController.dismiss(animated: true, completion: {
+                completion?()
+            })
+        }
+        
+        guard let confirmDelegate = self.confirmDelegate else {
+            dismiss()
+            return
+        }
+        
+        if self.workConfirmation { return }
+        
+        if confirmDelegate.needConfirm {
+            prepare?()
+            self.workConfirmation = true
+            confirmDelegate.confirm({ (isConfirmed) in
+                self.workConfirmation = false
+                self.afterReleaseDismissing = false
+                if isConfirmed {
+                    dismiss()
+                }
+            })
+        } else {
+            dismiss()
+        }
+    }
+    
     @objc func handlePan(gestureRecognizer: UIPanGestureRecognizer) {
         guard gestureRecognizer.isEqual(self.pan), self.swipeToDismissEnabled else { return }
         
@@ -329,11 +406,8 @@ extension SPStorkPresentationController {
         case .ended:
             self.workGester = false
             let translation = gestureRecognizer.translation(in: presentedView).y
-            if translation >= self.translateForDismiss {
-                self.presentedViewController.dismiss(animated: true, completion: {
-                    self.storkDelegate?.didDismissStorkBySwipe?()
-                })
-            } else {
+            
+            let toDefault = {
                 self.indicatorView.style = .arrow
                 UIView.animate(
                     withDuration: 0.6,
@@ -346,6 +420,14 @@ extension SPStorkPresentationController {
                         self.presentedView?.transform = .identity
                         self.gradeView.alpha = self.alpha
                 })
+            }
+            
+            if translation >= self.translateForDismiss {
+                self.dismissWithConfirmation(prepare: toDefault, completion: {
+                    self.storkDelegate?.didDismissStorkBySwipe?()
+                })
+            } else {
+                toDefault()
             }
         default:
             break
@@ -396,7 +478,7 @@ extension SPStorkPresentationController {
         
         let elasticThreshold: CGFloat = 120
         let translationFactor: CGFloat = 1 / 2
-
+        
         if translation >= 0 {
             let translationForModal: CGFloat = {
                 if translation >= elasticThreshold {
@@ -422,8 +504,10 @@ extension SPStorkPresentationController {
             let afterRealseDismissing = (translation >= self.translateForDismiss)
             if afterRealseDismissing != self.afterReleaseDismissing {
                 self.afterReleaseDismissing = afterRealseDismissing
-                if self.hapticMoments.contains(.willDismissIfRelease) {
-                    self.feedbackGenerator.impactOccurred()
+                if !self.workConfirmation {
+                    if self.hapticMoments.contains(.willDismissIfRelease) {
+                        self.feedbackGenerator.impactOccurred()
+                    }
                 }
             }
         }
@@ -453,11 +537,9 @@ extension SPStorkPresentationController {
     }
     
     private func updateLayoutIndicator() {
-        guard let presentedView = self.presentedView else { return }
         self.indicatorView.style = .line
         self.indicatorView.sizeToFit()
-        self.indicatorView.frame.origin.y = 12
-        self.indicatorView.center.x = presentedView.frame.width / 2
+        self.indicatorView.style = .arrow
     }
     
     private func updateLayoutCloseButton() {
